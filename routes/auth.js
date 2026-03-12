@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
 const { body, validationResult } = require("express-validator");
 const User = require("../models/User");
 const { protect, adminOnly } = require("../middleware/auth");
@@ -9,8 +10,10 @@ const { upload } = require("../config/cloudinary");
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE });
 
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
 // ─────────────────────────────────────────────
-// POST /api/auth/login
+// POST /api/auth/login  (email + password)
 // ─────────────────────────────────────────────
 router.post("/login",
   [
@@ -25,20 +28,82 @@ router.post("/login",
     try {
       const user = await User.findOne({ email });
       if (!user || !(await user.matchPassword(password)))
-        return res.status(401).json({ message: "Invalid email or password" });
+        return res.status(401).json({ message: "ইমেইল বা পাসওয়ার্ড সঠিক নয়" });
       if (!user.isActive)
-        return res.status(403).json({ message: "Account not yet approved. Contact admin." });
+        return res.status(403).json({ message: "অ্যাকাউন্ট এখনো অনুমোদিত হয়নি। অ্যাডমিনের সাথে যোগাযোগ করুন।" });
 
       res.json({
-        _id: user._id, name: user.name, email: user.email, role: user.role,
-        image: user.image, phone: user.phone, fatherName: user.fatherName,
-        monthlyDonation: user.monthlyDonation, token: generateToken(user._id),
+        _id: user._id, name: user.name, fatherName: user.fatherName,
+        email: user.email, phone: user.phone, role: user.role,
+        image: user.image, monthlyDonation: user.monthlyDonation,
+        token: generateToken(user._id),
       });
     } catch (error) {
       res.status(500).json({ message: "Server error", error: error.message });
     }
   }
 );
+
+// ─────────────────────────────────────────────
+// POST /api/auth/google-login
+// ─────────────────────────────────────────────
+router.post("/google-login", async (req, res) => {
+  const { idToken } = req.body;
+  if (!idToken) return res.status(400).json({ message: "Google token required" });
+
+  try {
+    // Verify the Google token
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    const payload = ticket.getPayload();
+    const { email, name, picture, sub: googleId } = payload;
+
+    // Find or create user
+    let user = await User.findOne({ email });
+
+    if (!user) {
+      // New user via Google — create as pending (isActive: false)
+      user = await User.create({
+        name,
+        email,
+        password: googleId + process.env.JWT_SECRET, // random password they'll never use
+        image: picture || "",
+        googleId,
+        role: "member",
+        isActive: false, // needs admin approval
+      });
+
+      return res.status(403).json({
+        message: "নিবন্ধন সফল! অ্যাডমিন অনুমোদনের পর লগইন করতে পারবেন।",
+      });
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({
+        message: "অ্যাকাউন্ট এখনো অনুমোদিত হয়নি। অ্যাডমিনের সাথে যোগাযোগ করুন।",
+      });
+    }
+
+    // Update Google info if missing
+    if (!user.googleId) {
+      user.googleId = googleId;
+      if (!user.image && picture) user.image = picture;
+      await user.save();
+    }
+
+    res.json({
+      _id: user._id, name: user.name, fatherName: user.fatherName,
+      email: user.email, phone: user.phone, role: user.role,
+      image: user.image, monthlyDonation: user.monthlyDonation,
+      token: generateToken(user._id),
+    });
+  } catch (error) {
+    console.error("Google login error:", error.message);
+    res.status(401).json({ message: "Google লগইন যাচাই করা যায়নি" });
+  }
+});
 
 // ─────────────────────────────────────────────
 // GET /api/auth/me
@@ -46,45 +111,40 @@ router.post("/login",
 router.get("/me", protect, async (req, res) => res.json(req.user));
 
 // ─────────────────────────────────────────────
-// POST /api/auth/register-request
-// Public self-registration — pending admin approval (isActive: false)
+// POST /api/auth/register-request  (public self-registration)
 // ─────────────────────────────────────────────
-router.post("/register-request",
-  upload.single("image"),
-  async (req, res) => {
-    const { name, fatherName, email, phone, password } = req.body;
+router.post("/register-request", upload.single("image"), async (req, res) => {
+  const { name, fatherName, email, phone, password } = req.body;
 
-    if (!name || !fatherName || !email || !phone || !password)
-      return res.status(400).json({ message: "সকল তথ্য পূরণ করুন" });
-    if (!req.file)
-      return res.status(400).json({ message: "প্রোফাইল ছবি আপলোড করা আবশ্যক" });
-    if (password.length < 6)
-      return res.status(400).json({ message: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে" });
+  if (!name || !fatherName || !email || !phone || !password)
+    return res.status(400).json({ message: "সকল তথ্য পূরণ করুন" });
+  if (!req.file)
+    return res.status(400).json({ message: "প্রোফাইল ছবি আপলোড করা আবশ্যক" });
+  if (password.length < 6)
+    return res.status(400).json({ message: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে" });
 
-    try {
-      const exists = await User.findOne({ email });
-      if (exists) return res.status(400).json({ message: "এই ইমেইল দিয়ে আগেই নিবন্ধন হয়েছে" });
+  try {
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ message: "এই ইমেইল দিয়ে আগেই নিবন্ধন হয়েছে" });
 
-      await User.create({
-        name, fatherName, email, phone, password,
-        image: req.file.path,
-        role: "member",
-        isActive: false, // ← needs admin approval
-      });
+    await User.create({
+      name, fatherName, email, phone, password,
+      image: req.file.path,
+      role: "member",
+      isActive: false,
+    });
 
-      res.status(201).json({ message: "নিবন্ধন সফল! অ্যাডমিন অনুমোদনের পর লগইন করতে পারবেন।" });
-    } catch (error) {
-      res.status(500).json({ message: "Server error", error: error.message });
-    }
+    res.status(201).json({ message: "নিবন্ধন সফল! অ্যাডমিন অনুমোদনের পর লগইন করতে পারবেন।" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
   }
-);
+});
 
 // ─────────────────────────────────────────────
-// POST /api/auth/register  (Admin adds member directly — active immediately)
+// POST /api/auth/register  (admin adds member directly)
 // ─────────────────────────────────────────────
 router.post("/register",
-  protect, adminOnly,
-  upload.single("image"),
+  protect, adminOnly, upload.single("image"),
   [
     body("name").notEmpty().withMessage("Name required"),
     body("email").isEmail().withMessage("Valid email required"),
@@ -119,7 +179,7 @@ router.post("/register",
 );
 
 // ─────────────────────────────────────────────
-// PUT /api/auth/update-profile  (logged-in user updates own profile)
+// PUT /api/auth/update-profile
 // ─────────────────────────────────────────────
 router.put("/update-profile", protect, upload.single("image"), async (req, res) => {
   try {
@@ -132,10 +192,9 @@ router.put("/update-profile", protect, upload.single("image"), async (req, res) 
     if (email)      user.email      = email;
     if (phone)      user.phone      = phone;
     if (req.file)   user.image      = req.file.path;
-    if (password)   user.password   = password; // pre-save hook will hash it
+    if (password)   user.password   = password;
 
     await user.save();
-
     res.json({
       _id: user._id, name: user.name, fatherName: user.fatherName,
       email: user.email, phone: user.phone, role: user.role,
@@ -147,7 +206,7 @@ router.put("/update-profile", protect, upload.single("image"), async (req, res) 
 });
 
 // ─────────────────────────────────────────────
-// GET /api/auth/members  (all active members)
+// GET /api/auth/members
 // ─────────────────────────────────────────────
 router.get("/members", protect, async (req, res) => {
   try {
@@ -159,7 +218,7 @@ router.get("/members", protect, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// GET /api/auth/pending  (pending approval)
+// GET /api/auth/pending
 // ─────────────────────────────────────────────
 router.get("/pending", protect, adminOnly, async (req, res) => {
   try {
@@ -171,7 +230,7 @@ router.get("/pending", protect, adminOnly, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// PATCH /api/auth/approve/:id  (admin approves pending member)
+// PATCH /api/auth/approve/:id
 // ─────────────────────────────────────────────
 router.patch("/approve/:id", protect, adminOnly, async (req, res) => {
   try {
@@ -204,8 +263,12 @@ router.post("/seed-admin", async (req, res) => {
     const exists = await User.findOne({ role: "admin" });
     if (exists) return res.status(400).json({ message: "Admin already exists" });
     const admin = await User.create({
-      name: "Admin", email: req.body.email || "admin@badaruddinwelfare.org",
-      password: req.body.password || "Admin@123", role: "admin", isActive: true, image: "",
+      name: "Admin",
+      email: req.body.email || "admin@badaruddinwelfare.org",
+      password: req.body.password || "Admin@123",
+      role: "admin",
+      isActive: true,
+      image: "",
     });
     res.status(201).json({ message: "Admin created", email: admin.email });
   } catch (error) {
