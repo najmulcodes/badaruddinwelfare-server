@@ -4,16 +4,15 @@ const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
 const User = require("../models/User");
 const { protect, adminOnly } = require("../middleware/auth");
+const { upload } = require("../config/cloudinary");
 
-// Generate JWT
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE });
 
-// @route  POST /api/auth/login
-// @desc   Login member
-// @access Public
-router.post(
-  "/login",
+// ─────────────────────────────────────────────
+// POST /api/auth/login
+// ─────────────────────────────────────────────
+router.post("/login",
   [
     body("email").isEmail().withMessage("Valid email required"),
     body("password").notEmpty().withMessage("Password required"),
@@ -25,20 +24,15 @@ router.post(
     const { email, password } = req.body;
     try {
       const user = await User.findOne({ email });
-      if (!user || !(await user.matchPassword(password))) {
+      if (!user || !(await user.matchPassword(password)))
         return res.status(401).json({ message: "Invalid email or password" });
-      }
-      if (!user.isActive) {
-        return res.status(403).json({ message: "Account deactivated. Contact admin." });
-      }
+      if (!user.isActive)
+        return res.status(403).json({ message: "Account not yet approved. Contact admin." });
+
       res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        image: user.image,
-        monthlyDonation: user.monthlyDonation,
-        token: generateToken(user._id),
+        _id: user._id, name: user.name, email: user.email, role: user.role,
+        image: user.image, phone: user.phone, fatherName: user.fatherName,
+        monthlyDonation: user.monthlyDonation, token: generateToken(user._id),
       });
     } catch (error) {
       res.status(500).json({ message: "Server error", error: error.message });
@@ -46,20 +40,51 @@ router.post(
   }
 );
 
-// @route  GET /api/auth/me
-// @desc   Get logged in user profile
-// @access Private
-router.get("/me", protect, async (req, res) => {
-  res.json(req.user);
-});
+// ─────────────────────────────────────────────
+// GET /api/auth/me
+// ─────────────────────────────────────────────
+router.get("/me", protect, async (req, res) => res.json(req.user));
 
-// @route  POST /api/auth/register
-// @desc   Register new member (admin only)
-// @access Private/Admin
-router.post(
-  "/register",
-  protect,
-  adminOnly,
+// ─────────────────────────────────────────────
+// POST /api/auth/register-request
+// Public self-registration — pending admin approval (isActive: false)
+// ─────────────────────────────────────────────
+router.post("/register-request",
+  upload.single("image"),
+  async (req, res) => {
+    const { name, fatherName, email, phone, password } = req.body;
+
+    if (!name || !fatherName || !email || !phone || !password)
+      return res.status(400).json({ message: "সকল তথ্য পূরণ করুন" });
+    if (!req.file)
+      return res.status(400).json({ message: "প্রোফাইল ছবি আপলোড করা আবশ্যক" });
+    if (password.length < 6)
+      return res.status(400).json({ message: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে" });
+
+    try {
+      const exists = await User.findOne({ email });
+      if (exists) return res.status(400).json({ message: "এই ইমেইল দিয়ে আগেই নিবন্ধন হয়েছে" });
+
+      await User.create({
+        name, fatherName, email, phone, password,
+        image: req.file.path,
+        role: "member",
+        isActive: false, // ← needs admin approval
+      });
+
+      res.status(201).json({ message: "নিবন্ধন সফল! অ্যাডমিন অনুমোদনের পর লগইন করতে পারবেন।" });
+    } catch (error) {
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  }
+);
+
+// ─────────────────────────────────────────────
+// POST /api/auth/register  (Admin adds member directly — active immediately)
+// ─────────────────────────────────────────────
+router.post("/register",
+  protect, adminOnly,
+  upload.single("image"),
   [
     body("name").notEmpty().withMessage("Name required"),
     body("email").isEmail().withMessage("Valid email required"),
@@ -68,20 +93,24 @@ router.post(
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+    if (!req.file) return res.status(400).json({ message: "সদস্যের ছবি আপলোড করা আবশ্যক" });
 
-    const { name, email, password, role, monthlyDonation } = req.body;
+    const { name, fatherName, email, phone, password, role, monthlyDonation } = req.body;
     try {
       const exists = await User.findOne({ email });
       if (exists) return res.status(400).json({ message: "Email already registered" });
 
-      const user = await User.create({ name, email, password, role, monthlyDonation });
+      const user = await User.create({
+        name, fatherName, email, phone, password,
+        role: role || "member",
+        monthlyDonation: monthlyDonation || 0,
+        image: req.file.path,
+        isActive: true,
+      });
+
       res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        monthlyDonation: user.monthlyDonation,
-        token: generateToken(user._id),
+        _id: user._id, name: user.name, email: user.email,
+        role: user.role, image: user.image, token: generateToken(user._id),
       });
     } catch (error) {
       res.status(500).json({ message: "Server error", error: error.message });
@@ -89,9 +118,37 @@ router.post(
   }
 );
 
-// @route  GET /api/auth/members
-// @desc   Get all members (private portal)
-// @access Private
+// ─────────────────────────────────────────────
+// PUT /api/auth/update-profile  (logged-in user updates own profile)
+// ─────────────────────────────────────────────
+router.put("/update-profile", protect, upload.single("image"), async (req, res) => {
+  try {
+    const { name, fatherName, email, phone, password } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    if (name)       user.name       = name;
+    if (fatherName) user.fatherName = fatherName;
+    if (email)      user.email      = email;
+    if (phone)      user.phone      = phone;
+    if (req.file)   user.image      = req.file.path;
+    if (password)   user.password   = password; // pre-save hook will hash it
+
+    await user.save();
+
+    res.json({
+      _id: user._id, name: user.name, fatherName: user.fatherName,
+      email: user.email, phone: user.phone, role: user.role,
+      image: user.image, monthlyDonation: user.monthlyDonation,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// GET /api/auth/members  (all active members)
+// ─────────────────────────────────────────────
 router.get("/members", protect, async (req, res) => {
   try {
     const members = await User.find({ isActive: true }).select("-password").sort({ createdAt: -1 });
@@ -101,9 +158,34 @@ router.get("/members", protect, async (req, res) => {
   }
 });
 
-// @route  DELETE /api/auth/members/:id
-// @desc   Deactivate a member (admin only)
-// @access Private/Admin
+// ─────────────────────────────────────────────
+// GET /api/auth/pending  (pending approval)
+// ─────────────────────────────────────────────
+router.get("/pending", protect, adminOnly, async (req, res) => {
+  try {
+    const pending = await User.find({ isActive: false }).select("-password").sort({ createdAt: -1 });
+    res.json(pending);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// PATCH /api/auth/approve/:id  (admin approves pending member)
+// ─────────────────────────────────────────────
+router.patch("/approve/:id", protect, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(req.params.id, { isActive: true }, { new: true });
+    if (!user) return res.status(404).json({ message: "Member not found" });
+    res.json({ message: `${user.name} অনুমোদন হয়েছে`, user });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// DELETE /api/auth/members/:id
+// ─────────────────────────────────────────────
 router.delete("/members/:id", protect, adminOnly, async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
@@ -114,19 +196,16 @@ router.delete("/members/:id", protect, adminOnly, async (req, res) => {
   }
 });
 
-// @route  POST /api/auth/seed-admin
-// @desc   Create first admin (run once, then disable in production)
-// @access Public — REMOVE after first use
+// ─────────────────────────────────────────────
+// POST /api/auth/seed-admin  — run ONCE then delete
+// ─────────────────────────────────────────────
 router.post("/seed-admin", async (req, res) => {
   try {
     const exists = await User.findOne({ role: "admin" });
     if (exists) return res.status(400).json({ message: "Admin already exists" });
-
     const admin = await User.create({
-      name: "Admin",
-      email: req.body.email || "admin@badaruddinwelfare.org",
-      password: req.body.password || "Admin@123",
-      role: "admin",
+      name: "Admin", email: req.body.email || "admin@badaruddinwelfare.org",
+      password: req.body.password || "Admin@123", role: "admin", isActive: true, image: "",
     });
     res.status(201).json({ message: "Admin created", email: admin.email });
   } catch (error) {

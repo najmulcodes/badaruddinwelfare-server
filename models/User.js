@@ -3,14 +3,16 @@ const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true },
-    password: { type: String, required: true, minlength: 6 },
-    role: { type: String, enum: ["admin", "member"], default: "member" },
-    monthlyDonation: { type: Number, default: 0 },
-    image: { type: String, default: "" },
-    joiningDate: { type: Date, default: Date.now },
-    isActive: { type: Boolean, default: true },
+    name:           { type: String, required: true, trim: true },
+    fatherName:     { type: String, default: "", trim: true },
+    email:          { type: String, required: true, unique: true, lowercase: true },
+    phone:          { type: String, default: "", trim: true },
+    password:       { type: String, required: true, minlength: 6 },
+    role:           { type: String, enum: ["admin", "member"], default: "member" },
+    monthlyDonation:{ type: Number, default: 0 },
+    image:          { type: String, default: "" },
+    joiningDate:    { type: Date, default: Date.now },
+    isActive:       { type: Boolean, default: false }, // false until admin approves
   },
   { timestamps: true }
 );
@@ -23,7 +25,6 @@ userSchema.pre("save", async function (next) {
   next();
 });
 
-// Compare password
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
