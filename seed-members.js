@@ -1,6 +1,6 @@
 // seed-members.js
 // Run once: node seed-members.js
-// Creates all 20 family members with default password: bother123
+// Creates all 20 family members with default password: brother123
 
 require("dotenv").config();
 const mongoose = require("mongoose");
