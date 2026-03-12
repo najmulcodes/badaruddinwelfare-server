@@ -68,9 +68,7 @@ badaruddinwelfare-server
 ├── server.js
 │
 └── package.json
-```
-
----
+``` 
 
 # 🚀 Live API
 
@@ -307,14 +305,6 @@ Steps:
 3. Set environment variables
 4. Deploy server
 
-Production URL example:
-
-```
-https://badaruddinwelfare-api.onrender.com
-```
-
----
-
 # 📊 Database (MongoDB)
 
 Collections used:
@@ -332,7 +322,7 @@ Collections used:
 Frontend Client
 
 ```
-https://github.com/najmulcodes/badaruddinwelfare-client
+ https://github.com/najmulcodes/badaruddinwelfare-client
 ```
 
 ---
