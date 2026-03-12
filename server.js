@@ -28,6 +28,7 @@ app.use("/api/help-requests", require("./routes/helpRequests"));
 app.use("/api/contact",       require("./routes/contact"));
 app.use("/api/news",          require("./routes/news"));
 app.use("/api/dashboard",     require("./routes/dashboard"));
+app.use("/api/members", require("./routes/members"));
 
 // ── Health check ────────────────────────────────────────────────────────────
 app.get("/", (req, res) => {
