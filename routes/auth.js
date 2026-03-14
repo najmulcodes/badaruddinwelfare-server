@@ -52,7 +52,6 @@ router.post("/google-login", async (req, res) => {
   if (!idToken) return res.status(400).json({ message: "Google token required" });
 
   try {
-    // Verify the Google token
     const ticket = await googleClient.verifyIdToken({
       idToken,
       audience: process.env.GOOGLE_CLIENT_ID,
@@ -60,19 +59,17 @@ router.post("/google-login", async (req, res) => {
     const payload = ticket.getPayload();
     const { email, name, picture, sub: googleId } = payload;
 
-    // Find or create user
     let user = await User.findOne({ email });
 
     if (!user) {
-      // New user via Google — create as pending (isActive: false)
       user = await User.create({
         name,
         email,
-        password: googleId + process.env.JWT_SECRET, // random password they'll never use
+        password: googleId + process.env.JWT_SECRET,
         image: picture || "",
         googleId,
         role: "member",
-        isActive: false, // needs admin approval
+        isActive: false,
       });
 
       return res.status(403).json({
@@ -86,7 +83,6 @@ router.post("/google-login", async (req, res) => {
       });
     }
 
-    // Update Google info if missing
     if (!user.googleId) {
       user.googleId = googleId;
       if (!user.image && picture) user.image = picture;
@@ -141,7 +137,7 @@ router.post("/register-request", upload.single("image"), async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// POST /api/auth/register  (admin adds member directly)
+// POST /api/auth/register  (admin adds member directly — active immediately)
 // ─────────────────────────────────────────────
 router.post("/register",
   protect, adminOnly, upload.single("image"),
@@ -206,7 +202,7 @@ router.put("/update-profile", protect, upload.single("image"), async (req, res) 
 });
 
 // ─────────────────────────────────────────────
-// GET /api/auth/members
+// GET /api/auth/members  (all active members)
 // ─────────────────────────────────────────────
 router.get("/members", protect, async (req, res) => {
   try {
@@ -218,7 +214,7 @@ router.get("/members", protect, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// GET /api/auth/pending
+// GET /api/auth/pending  (pending approval)
 // ─────────────────────────────────────────────
 router.get("/pending", protect, adminOnly, async (req, res) => {
   try {
@@ -230,7 +226,7 @@ router.get("/pending", protect, adminOnly, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// PATCH /api/auth/approve/:id
+// PATCH /api/auth/approve/:id  (admin approves pending member)
 // ─────────────────────────────────────────────
 router.patch("/approve/:id", protect, adminOnly, async (req, res) => {
   try {
@@ -243,13 +239,26 @@ router.patch("/approve/:id", protect, adminOnly, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// DELETE /api/auth/members/:id
+// DELETE /api/auth/members/:id  (deactivate active member)
 // ─────────────────────────────────────────────
 router.delete("/members/:id", protect, adminOnly, async (req, res) => {
   try {
     const user = await User.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
     if (!user) return res.status(404).json({ message: "Member not found" });
     res.json({ message: "Member deactivated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// ─────────────────────────────────────────────
+// DELETE /api/auth/reject/:id  (permanently delete a pending user)
+// ─────────────────────────────────────────────
+router.delete("/reject/:id", protect, adminOnly, async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: "Member not found" });
+    res.json({ message: "আবেদন বাতিল করা হয়েছে" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
