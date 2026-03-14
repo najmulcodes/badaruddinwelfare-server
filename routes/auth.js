@@ -12,8 +12,11 @@ const generateToken = (id) =>
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// ── Super-admin email — cannot be touched by anyone ──
+const SUPER_ADMIN = "admin@shariar";
+
 // ─────────────────────────────────────────────
-// POST /api/auth/login  (email + password)
+// POST /api/auth/login
 // ─────────────────────────────────────────────
 router.post("/login",
   [
@@ -63,15 +66,13 @@ router.post("/google-login", async (req, res) => {
 
     if (!user) {
       user = await User.create({
-        name,
-        email,
+        name, email,
         password: googleId + process.env.JWT_SECRET,
         image: picture || "",
         googleId,
         role: "member",
         isActive: false,
       });
-
       return res.status(403).json({
         message: "নিবন্ধন সফল! অ্যাডমিন অনুমোদনের পর লগইন করতে পারবেন।",
       });
@@ -137,7 +138,7 @@ router.post("/register-request", upload.single("image"), async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// POST /api/auth/register  (admin adds member directly — active immediately)
+// POST /api/auth/register  (admin adds member directly)
 // ─────────────────────────────────────────────
 router.post("/register",
   protect, adminOnly, upload.single("image"),
@@ -202,7 +203,7 @@ router.put("/update-profile", protect, upload.single("image"), async (req, res) 
 });
 
 // ─────────────────────────────────────────────
-// GET /api/auth/members  (all active members)
+// GET /api/auth/members
 // ─────────────────────────────────────────────
 router.get("/members", protect, async (req, res) => {
   try {
@@ -214,7 +215,7 @@ router.get("/members", protect, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// GET /api/auth/pending  (pending approval)
+// GET /api/auth/pending
 // ─────────────────────────────────────────────
 router.get("/pending", protect, adminOnly, async (req, res) => {
   try {
@@ -226,7 +227,7 @@ router.get("/pending", protect, adminOnly, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// PATCH /api/auth/approve/:id  (admin approves pending member)
+// PATCH /api/auth/approve/:id
 // ─────────────────────────────────────────────
 router.patch("/approve/:id", protect, adminOnly, async (req, res) => {
   try {
@@ -239,12 +240,19 @@ router.patch("/approve/:id", protect, adminOnly, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// DELETE /api/auth/members/:id  (deactivate active member)
+// DELETE /api/auth/members/:id  (deactivate — super-admin protected)
 // ─────────────────────────────────────────────
 router.delete("/members/:id", protect, adminOnly, async (req, res) => {
   try {
-    const user = await User.findByIdAndUpdate(req.params.id, { isActive: false }, { new: true });
-    if (!user) return res.status(404).json({ message: "Member not found" });
+    const target = await User.findById(req.params.id);
+    if (!target) return res.status(404).json({ message: "Member not found" });
+
+    // Block any action on super-admin
+    if (target.email === SUPER_ADMIN) {
+      return res.status(403).json({ message: "এই অ্যাকাউন্টে কোনো পরিবর্তন করা যাবে না" });
+    }
+
+    await User.findByIdAndUpdate(req.params.id, { isActive: false });
     res.json({ message: "Member deactivated successfully" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
@@ -252,12 +260,19 @@ router.delete("/members/:id", protect, adminOnly, async (req, res) => {
 });
 
 // ─────────────────────────────────────────────
-// DELETE /api/auth/reject/:id  (permanently delete a pending user)
+// DELETE /api/auth/reject/:id  (permanently delete pending user — super-admin protected)
 // ─────────────────────────────────────────────
 router.delete("/reject/:id", protect, adminOnly, async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
-    if (!user) return res.status(404).json({ message: "Member not found" });
+    const target = await User.findById(req.params.id);
+    if (!target) return res.status(404).json({ message: "Member not found" });
+
+    // Block any action on super-admin
+    if (target.email === SUPER_ADMIN) {
+      return res.status(403).json({ message: "এই অ্যাকাউন্টে কোনো পরিবর্তন করা যাবে না" });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
     res.json({ message: "আবেদন বাতিল করা হয়েছে" });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
