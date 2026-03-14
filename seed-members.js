@@ -22,7 +22,7 @@ const members = [
   { name: "মোঃ সামসুউদ্দিন",     email: "shamsuddin@bubwo.org" },
   { name: "রাজীব",               email: "rajib@bubwo.org" },
   { name: "শরীফুল ইসলাম",        email: "shariful@bubwo.org" },
-  { name: "শাহরিয়ার",           email: "admin@shariar" },
+  { name: "শাহরিয়ার",           email: "admin@shariar.com" },
 ];
 
 async function seed() {
