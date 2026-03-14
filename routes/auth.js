@@ -13,7 +13,7 @@ const generateToken = (id) =>
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // ── Super-admin email — cannot be touched by anyone ──
-const SUPER_ADMIN = "admin@shariar";
+const SUPER_ADMIN = "admin@shariar.com";
 
 // ─────────────────────────────────────────────
 // POST /api/auth/login
