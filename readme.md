@@ -6,7 +6,7 @@
 
 <p align="center">
 <b>Backend API for Badar Uddin Bepari Welfare Organization</b><br/>
-Secure backend for managing charity donations, member activities, help requests, and fund transparency.
+Secure REST API powering the charity management platform.
 </p>
 
 <p align="center">
@@ -23,26 +23,49 @@ Secure backend for managing charity donations, member activities, help requests,
 
 This repository contains the **backend server for the Badar Uddin Bepari Welfare Organization platform.**
 
-It provides the **REST API, authentication system, database integration, and file upload functionality** required to run the charity management platform.
+The server handles:
 
-The server powers both:
+• Authentication and authorization  
+• Donation management  
+• Help request processing  
+• Spending records  
+• Contact messages  
+• File uploads
+
+It powers both:
 
 • Public charity website  
-• Private member management portal
+• Private member dashboard
 
 ---
 
 # 🌍 Project Purpose
 
-The backend manages the charity’s operations digitally.
+The backend digitizes charity operations and helps maintain **transparency and accountability**.
 
-It allows the organization to:
+The system allows the organization to:
 
 • Track member donations  
 • Manage available charity funds  
 • Record spending for beneficiaries  
 • Receive help requests from the public  
-• Maintain transparency in fund management  
+• Maintain transparent financial records
+
+---
+
+# 🚀 Live API
+
+Production API
+
+
+https://badaruddinwelfare-server.onrender.com
+
+
+Example endpoint
+
+
+https://badaruddinwelfare-server.onrender.com/api/donations
+
 
 ---
 
@@ -65,41 +88,25 @@ badaruddinwelfare-server
 
 ---
 
-# 🚀 Live API
-
-Production API (Render)
-
-
-https://badaruddinwelfare-api.onrender.com
-
-
----
-
 # 🛠 Tech Stack
 
 ### Runtime
-
 Node.js
 
 ### Framework
-
 Express.js
 
 ### Database
-
 MongoDB Atlas
 
 ### Authentication
-
 JWT (JSON Web Token)
 
 ### File Upload
-
 Multer  
 Cloudinary
 
 ### Deployment
-
 Render
 
 ---
@@ -108,13 +115,13 @@ Render
 
 ## Authentication System
 
-Secure member authentication using **JWT tokens**.
+Secure authentication using **JWT tokens**.
 
 Features:
 
 • Login authentication  
-• Protected routes  
 • Token verification middleware  
+• Protected API routes  
 
 ---
 
@@ -122,24 +129,26 @@ Features:
 
 Members can record monthly contributions.
 
-Data fields include:
+Fields stored:
 
 • Member Name  
 • Date  
 • Amount  
 • Notes  
 
-The system automatically calculates:
+The system calculates:
 
-**Total Donations**
+
+Total Donations
+
 
 ---
 
-## Fund Distribution Tracking
+## Spending Management
 
-Records when charity funds are used to help someone.
+Records charity spending when funds are used.
 
-Fields include:
+Fields:
 
 • Recipient Name  
 • Amount  
@@ -149,13 +158,15 @@ Fields include:
 
 The system calculates:
 
-**Total Spending**
+
+Total Spending
+
 
 ---
 
 ## Fund Balance Calculation
 
-Current fund balance is calculated as:
+Available funds are calculated automatically.
 
 
 Available Fund = Total Donations - Total Spending
@@ -173,119 +184,108 @@ Fields:
 • Phone  
 • Address  
 • Description  
-• Supporting Documents  
+• Supporting documents
 
-Requests are stored in the database and reviewed by members.
-
-Status options:
+Request statuses:
 
 • New  
 • Under Review  
 • Approved  
-• Rejected  
+• Rejected
+
+Members review and approve requests through the dashboard.
 
 ---
 
 # 🔒 Security Features
 
 • JWT authentication  
-• Protected API routes  
+• Protected routes middleware  
 • Input validation  
 • File upload restrictions  
-• Secure environment variables  
+• Secure environment variables
 
-Unauthorized users cannot access member data.
+Unauthorized users cannot access protected endpoints.
 
 ---
 
-# 📂 API Endpoints Overview
+# 📂 API Endpoints
 
-### Authentication
+## Authentication
+
+Login user
 
 
 POST /api/auth/login
 
 
----
+Example request
 
-### Donations
+```json
+{
+  "email": "admin@example.com",
+  "password": "123456"
+}
+Donations
 
+Get donation records
 
 GET /api/donations
+
+Add donation record
+
 POST /api/donations
+Spending
 
-
----
-
-### Spending
-
+Get spending records
 
 GET /api/spending
+
+Add spending record
+
 POST /api/spending
+Help Requests
 
+Submit help request
 
----
+POST /api/help-requests
 
-### Help Requests
-
+Get requests
 
 GET /api/help-requests
-POST /api/help-requests
+
+Update request status
+
 PATCH /api/help-requests/:id/status
+Contact Messages
 
-
----
-
-### Contact Messages
-
+Submit contact form message
 
 POST /api/contact
-
-
----
-
-# ⚙ Installation
+⚙ Installation
 
 Clone the repository
 
-
 git clone https://github.com/najmulcodes/badaruddinwelfare-server.git
-
 
 Navigate to project directory
 
-
 cd badaruddinwelfare-server
-
 
 Install dependencies
 
-
 npm install
-
-
----
-
-# ▶ Run Development Server
-
-
+▶ Run Development Server
 npm run dev
-
 
 Server will start on
 
-
 http://localhost:5000
+🔐 Environment Variables
 
-
----
-
-# 🔐 Environment Variables
-
-Create a `.env` file inside the root directory.
+Create .env file inside root directory.
 
 Example:
-
 
 PORT=5000
 
@@ -293,77 +293,60 @@ MONGO_URI=your_mongodb_connection
 
 JWT_SECRET=your_secret_key
 
-CLOUDINARY_CLOUD_NAME=your_cloud_name
-CLOUDINARY_API_KEY=your_api_key
-CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_CLOUD_NAME=xxxx
+CLOUDINARY_API_KEY=xxxx
+CLOUDINARY_API_SECRET=xxxx
+🚀 Deployment
 
+Backend is deployed using Render.
 
----
+Deployment steps:
 
-# 🚀 Deployment
+Push repository to GitHub
 
-Backend is deployed using **Render**.
+Connect repository to Render
 
-Steps:
+Configure environment variables
 
-1. Push repository to GitHub
-2. Connect GitHub repository to Render
-3. Set environment variables
-4. Deploy server
+Deploy server
 
----
+📊 Database Collections
 
-# 📊 Database (MongoDB)
+MongoDB collections used:
 
-Collections used:
+• users
+• donations
+• spending
+• helpRequests
+• contactMessages
 
-• users  
-• donations  
-• spending  
-• helpRequests  
-• contactMessages  
+🔗 Related Repository
 
----
-
-# 🔗 Related Repository
-
-Frontend Client
-
+Frontend client
 
 https://github.com/najmulcodes/badaruddinwelfare-client
 
-
----
-
-# 👨‍💻 Developer
+👨‍💻 Developer
 
 Developed by
 
-**Najmul Hasan**
+Najmul Hasan
 
 Full Stack Developer
+Dhaka, Bangladesh
 
-GitHub  
+GitHub
 https://github.com/najmulcodes
 
-Email  
+Email
 najmulhasanshahin@gmail.com
 
----
+📜 License
 
-# 📜 License
+This project was created for
 
-This project is developed for  
-**Badar Uddin Bepari Welfare Organization**
+Badar Uddin Bepari Welfare Organization
 
 All rights reserved.
 
----
-
-<p align="center">
-⭐ If you found this project helpful, consider starring the repository.
-</p>
-
-<p align="center">
-<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0ea5a4,100:0f172a&height=120&section=footer"/>
-</p>
+<p align="center"> ⭐ If you found this project helpful, consider starring the repository. </p> <p align="center"> <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0ea5a4,100:0f172a&height=120&section=footer"/> </p> ```
