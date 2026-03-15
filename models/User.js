@@ -8,7 +8,7 @@ const userSchema = new mongoose.Schema(
     email:           { type: String, required: true, unique: true, lowercase: true },
     phone:           { type: String, default: "", trim: true },
     password:        { type: String, required: true, minlength: 6 },
-    role:            { type: String, enum: ["admin", "member"], default: "member" },
+    role:            { type: String, enum: ["admin", "member", "superAdmin"], default: "member" },
     monthlyDonation: { type: Number, default: 0 },
     image:           { type: String, default: "" },
     googleId:        { type: String, default: "" },
@@ -19,10 +19,14 @@ const userSchema = new mongoose.Schema(
 );
 
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
-  next();
+  try {
+    if (!this.isModified("password")) return next();
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
