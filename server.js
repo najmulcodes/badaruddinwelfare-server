@@ -19,20 +19,18 @@ app.use(helmet());
 app.use(morgan("dev"));
 
 // ── CORS Configuration ──────────────────────────────────────
-app.use(
-  cors({
-    origin: [
-      "http://localhost:5173",
-      "https://badaruddinwelfare-client.vercel.app"
-    ],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true
-  })
-);
+const corsOptions = {
+  origin: [
+    "http://localhost:5173",
+    "https://badaruddinwelfare-client.vercel.app"
+  ],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+};
 
-// Allow preflight requests
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 // ── Body Parsers ────────────────────────────────────────────
 app.use(express.json());
@@ -52,7 +50,7 @@ app.use("/api/members", require("./routes/members"));
 app.get("/", (req, res) => {
   res.json({
     message: "✅ Badaruddin Welfare API is running",
-    status: "OK"
+    status: "OK",
   });
 });
 
@@ -60,7 +58,7 @@ app.get("/", (req, res) => {
 app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: "Route not found"
+    message: "Route not found",
   });
 });
 
@@ -70,7 +68,7 @@ app.use((err, req, res, next) => {
 
   res.status(err.status || 500).json({
     success: false,
-    message: err.message || "Internal Server Error"
+    message: err.message || "Internal Server Error",
   });
 });
 
