@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const NewsPost = require("../models/NewsPost");
 const { protect, adminOnly } = require("../middleware/auth");
-const { upload } = require("../config/cloudinary");
+const { upload, uploadToCloudinary } = require("../config/cloudinary");
 
 const uploadSingle = (fieldName) => (req, res, next) => {
   upload.single(fieldName)(req, res, (err) => {
@@ -28,10 +28,17 @@ router.post("/", protect, adminOnly, uploadSingle("image"), async (req, res) => 
     const { title, description, date } = req.body;
     if (!title || !description)
       return res.status(400).json({ message: "Title and description are required" });
+
+    let imageUrl = "";
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+      imageUrl = result.secure_url;
+    }
+
     const post = await NewsPost.create({
       title, description,
       date: date || Date.now(),
-      image: req.file?.path || "",
+      image: imageUrl,
       addedBy: req.user._id,
     });
     res.status(201).json(post);

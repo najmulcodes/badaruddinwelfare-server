@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const HelpRequest = require("../models/HelpRequest");
 const { protect, adminOnly } = require("../middleware/auth");
-const { upload } = require("../config/cloudinary");
+const { upload, uploadToCloudinary } = require("../config/cloudinary");
 
 const uploadSingle = (fieldName) => (req, res, next) => {
   upload.single(fieldName)(req, res, (err) => {
@@ -19,9 +19,16 @@ router.post("/", uploadSingle("attachment"), async (req, res) => {
     const { fullName, phone, address, description } = req.body;
     if (!fullName || !phone || !address || !description)
       return res.status(400).json({ message: "All fields are required" });
+
+    let attachmentUrl = "";
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+      attachmentUrl = result.secure_url;
+    }
+
     const helpRequest = await HelpRequest.create({
       fullName, phone, address, description,
-      attachment: req.file?.path || "",
+      attachment: attachmentUrl,
     });
     res.status(201).json({ message: "Help request submitted successfully", helpRequest });
   } catch (error) {

@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken");
 const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/User");
 const { protect, adminOnly } = require("../middleware/auth");
-const { upload } = require("../config/cloudinary");
+const { upload, uploadToCloudinary } = require("../config/cloudinary");
 
 const generateToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE });
@@ -95,9 +95,16 @@ router.post("/register-request", uploadSingle("image"), async (req, res) => {
   try {
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "এই ইমেইল দিয়ে আগেই নিবন্ধন হয়েছে" });
+
+    let imageUrl = "";
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+      imageUrl = result.secure_url;
+    }
+
     await User.create({
       name, fatherName, email, phone, password,
-      image: req.file?.path || "",
+      image: imageUrl,
       role: "member",
       isActive: false,
     });
@@ -118,11 +125,14 @@ router.post("/register", protect, adminOnly, uploadSingle("image"), async (req, 
   try {
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "Email already registered" });
+
+    const result = await uploadToCloudinary(req.file.buffer);
+
     const user = await User.create({
       name, fatherName, email, phone, password,
       role: role || "member",
       monthlyDonation: monthlyDonation || 0,
-      image: req.file.path,
+      image: result.secure_url,
       isActive: true,
     });
     res.status(201).json({
@@ -145,8 +155,11 @@ router.put("/update-profile", protect, uploadSingle("image"), async (req, res) =
     if (fatherName) user.fatherName = fatherName;
     if (email)      user.email      = email;
     if (phone)      user.phone      = phone;
-    if (req.file)   user.image      = req.file.path;
     if (password)   user.password   = password;
+    if (req.file) {
+      const result = await uploadToCloudinary(req.file.buffer);
+      user.image = result.secure_url;
+    }
     await user.save();
     res.json({
       _id: user._id, name: user.name, fatherName: user.fatherName,

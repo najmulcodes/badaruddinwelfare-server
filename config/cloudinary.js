@@ -1,5 +1,4 @@
 const cloudinary = require("cloudinary").v2;
-const { CloudinaryStorage } = require("multer-storage-cloudinary");
 const multer = require("multer");
 
 cloudinary.config({
@@ -8,23 +7,26 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// ── Verify Cloudinary connection on startup ──
 cloudinary.api.ping()
   .then(() => console.log("✅ Cloudinary connected"))
   .catch((err) => console.error("❌ Cloudinary Error:", err.message));
 
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: {
-    folder: "badaruddin-welfare",
-    allowed_formats: ["jpg", "jpeg", "png", "webp"],
-    resource_type: "auto",
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-module.exports = { cloudinary, upload };
+const uploadToCloudinary = (buffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "badaruddin-welfare", resource_type: "auto" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    stream.end(buffer);
+  });
+};
+
+module.exports = { cloudinary, upload, uploadToCloudinary };
