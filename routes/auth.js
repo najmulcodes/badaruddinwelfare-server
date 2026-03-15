@@ -421,9 +421,20 @@ router.put("/update-profile", protect, uploadSingle("image"), async (req, res) =
     const user = await User.findById(req.user._id);
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    if (email) {
+      const normalizedEmail = normalizeEmail(email);
+      const emailOwner = await User.findOne({
+        email: normalizedEmail,
+        _id: { $ne: req.user._id },
+      });
+      if (emailOwner) {
+        return res.status(400).json({ message: "এই ইমেইল আগে থেকেই ব্যবহার করা হয়েছে" });
+      }
+      user.email = normalizedEmail;
+    }
+
     if (name)       user.name       = name;
     if (fatherName) user.fatherName = fatherName;
-    if (email)      user.email      = normalizeEmail(email);
     if (phone)      user.phone      = phone;
     if (password)   user.password   = password;
 

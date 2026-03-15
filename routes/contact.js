@@ -22,7 +22,7 @@ router.post("/", async (req, res) => {
 // @route  GET /api/contact
 // @desc   Get all contact messages
 // @access Private
-router.get("/", protect, async (req, res) => {
+router.get("/", protect, adminOnly, async (req, res) => {
   try {
     const messages = await ContactMessage.find().sort({ createdAt: -1 });
     res.json(messages);
@@ -34,7 +34,7 @@ router.get("/", protect, async (req, res) => {
 // @route  PATCH /api/contact/:id/read
 // @desc   Mark message as read
 // @access Private
-router.patch("/:id/read", protect, async (req, res) => {
+router.patch("/:id/read", protect, adminOnly, async (req, res) => {
   try {
     const msg = await ContactMessage.findByIdAndUpdate(
       req.params.id,

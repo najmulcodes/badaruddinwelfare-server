@@ -19,11 +19,24 @@ app.use(helmet());
 app.use(morgan("dev"));
 
 // ── CORS Configuration ──────────────────────────────────────
+const envOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://badaruddinwelfare-client.vercel.app",
+  ...envOrigins,
+];
+
 const corsOptions = {
-  origin: [
-    "http://localhost:5173",
-    "https://badaruddinwelfare-client.vercel.app"
-  ],
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error("Not allowed by CORS"));
+  },
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true

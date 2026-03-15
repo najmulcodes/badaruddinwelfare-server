@@ -37,7 +37,7 @@ router.post("/", uploadSingle("attachment"), async (req, res) => {
   }
 });
 
-router.get("/", protect, async (req, res) => {
+router.get("/", protect, adminOnly, async (req, res) => {
   try {
     const { status } = req.query;
     const filter = status ? { status } : {};
@@ -48,7 +48,7 @@ router.get("/", protect, async (req, res) => {
   }
 });
 
-router.patch("/:id/status", protect, async (req, res) => {
+router.patch("/:id/status", protect, adminOnly, async (req, res) => {
   try {
     const { status } = req.body;
     const validStatuses = ["New", "Under Review", "Approved", "Rejected"];

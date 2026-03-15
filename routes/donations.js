@@ -37,6 +37,34 @@ router.get("/summary", protect, async (req, res) => {
   }
 });
 
+// @route  POST /api/donations/member-report
+// @desc   Logged-in member submits donation info
+// @access Private
+router.post("/member-report", protect, async (req, res) => {
+  try {
+    const { amount, month, year, notes } = req.body;
+    if (!amount || !month || !year) {
+      return res.status(400).json({ message: "Amount, month and year are required" });
+    }
+
+    const donation = await Donation.create({
+      member: req.user._id,
+      memberName: req.user.name,
+      amount,
+      month: Number(month),
+      year: Number(year),
+      notes: notes || "Member self-report",
+    });
+
+    res.status(201).json({
+      message: "Donation report submitted successfully",
+      donation,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 // @route  POST /api/donations
 // @desc   Add donation entry
 // @access Private/Admin
