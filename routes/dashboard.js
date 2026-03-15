@@ -64,4 +64,40 @@ router.get("/", protect, async (req, res) => {
   }
 });
 
+// @route  GET /api/dashboard/analytics
+// @desc   Get donation analytics summary
+// @access Private
+router.get("/analytics", protect, async (req, res) => {
+  try {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1;
+    const currentYear = now.getFullYear();
+
+    const [donationResult, donationCount, currentMonthResult, totalMembers, pendingHelpRequests] =
+      await Promise.all([
+        Donation.aggregate([
+          { $match: { status: "approved" } },
+          { $group: { _id: null, total: { $sum: "$amount" } } },
+        ]),
+        Donation.countDocuments({ status: "approved" }),
+        Donation.aggregate([
+          { $match: { status: "approved", month: currentMonth, year: currentYear } },
+          { $group: { _id: null, total: { $sum: "$amount" } } },
+        ]),
+        User.countDocuments({ isActive: true }),
+        HelpRequest.countDocuments({ status: "New" }),
+      ]);
+
+    res.json({
+      totalDonations: donationResult[0]?.total || 0,
+      donationCount,
+      currentMonthDonations: currentMonthResult[0]?.total || 0,
+      totalMembers,
+      pendingHelpRequests,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
 module.exports = router;
