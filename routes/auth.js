@@ -95,23 +95,18 @@ router.post("/register-request", uploadSingle("image"), async (req, res) => {
   try {
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "এই ইমেইল দিয়ে আগেই নিবন্ধন হয়েছে" });
-
     let imageUrl = "";
     if (req.file) {
       const result = await uploadToCloudinary(req.file.buffer);
       imageUrl = result.secure_url;
     }
-
     await User.create({
       name, fatherName, email, phone, password,
-      image: imageUrl,
-      role: "member",
-      isActive: false,
+      image: imageUrl, role: "member", isActive: false,
     });
     res.status(201).json({ message: "নিবন্ধন সফল! অ্যাডমিন অনুমোদনের পর লগইন করতে পারবেন।" });
   } catch (error) {
     console.error("❌ Register-request error:", error.message);
-    console.error("❌ Stack:", error.stack);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -126,7 +121,6 @@ router.post("/register", protect, adminOnly, uploadSingle("image"), async (req, 
   try {
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "Email already registered" });
-
     const result = await uploadToCloudinary(req.file.buffer);
     const user = await User.create({
       name, fatherName, email, phone, password,
@@ -141,7 +135,6 @@ router.post("/register", protect, adminOnly, uploadSingle("image"), async (req, 
     });
   } catch (error) {
     console.error("❌ Register error:", error.message);
-    console.error("❌ Stack:", error.stack);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -169,7 +162,6 @@ router.put("/update-profile", protect, uploadSingle("image"), async (req, res) =
     });
   } catch (error) {
     console.error("❌ Update-profile error:", error.message);
-    console.error("❌ Stack:", error.stack);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -228,6 +220,25 @@ router.delete("/reject/:id", protect, adminOnly, async (req, res) => {
       return res.status(403).json({ message: "এই অ্যাকাউন্টে কোনো পরিবর্তন করা যাবে না" });
     await User.findByIdAndDelete(req.params.id);
     res.json({ message: "আবেদন বাতিল করা হয়েছে" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// ── TEMP: seed-admin — DELETE AFTER USE ──
+router.post("/seed-admin", async (req, res) => {
+  try {
+    const exists = await User.findOne({ email: req.body.email });
+    if (exists) return res.status(400).json({ message: "Already exists" });
+    const admin = await User.create({
+      name: req.body.name || "Admin",
+      email: req.body.email,
+      password: req.body.password,
+      role: "admin",
+      isActive: true,
+      image: "",
+    });
+    res.status(201).json({ message: "Created", email: admin.email });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
