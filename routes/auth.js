@@ -28,9 +28,11 @@ const uploadSingle = (fieldName) => (req, res, next) => {
 
 // ── OTP Helpers ──
 const generateOTP = () => crypto.randomInt(100000, 999999).toString();
+const normalizeEmail = (email = "") => email.trim().toLowerCase();
+const normalizeOTP = (otp = "") => otp.toString().trim();
 
 const clearOldOTPs = (email, type) =>
-  OTP.deleteMany({ email: email.toLowerCase(), type });
+  OTP.deleteMany({ email: normalizeEmail(email), type });
 
 // ════════════════════════════════════════════════════
 // OTP ROUTES
@@ -40,32 +42,33 @@ const clearOldOTPs = (email, type) =>
 router.post("/send-register-otp", async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ message: "ইমেইল প্রয়োজন" });
+  const normalizedEmail = normalizeEmail(email);
 
   try {
-    const exists = await User.findOne({ email: email.toLowerCase() });
+    const exists = await User.findOne({ email: normalizedEmail });
     if (exists)
       return res.status(400).json({ message: "এই ইমেইল দিয়ে আগেই নিবন্ধন হয়েছে" });
 
     // Rate limit — no more than 1 OTP per 60 seconds
     const recent = await OTP.findOne({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       type: "register",
       createdAt: { $gte: new Date(Date.now() - 60 * 1000) },
     });
     if (recent)
       return res.status(429).json({ message: "৬০ সেকেন্ড পর আবার চেষ্টা করুন" });
 
-    await clearOldOTPs(email, "register");
+    await clearOldOTPs(normalizedEmail, "register");
 
     const code = generateOTP();
     await OTP.create({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       code,
       type: "register",
       expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
     });
 
-    await sendOTPEmail(email, code, "register");
+    await sendOTPEmail(normalizedEmail, code, "register");
     res.json({ message: "OTP পাঠানো হয়েছে" });
   } catch (error) {
     console.error("❌ send-register-otp:", error.message);
@@ -80,23 +83,28 @@ router.post("/verify-register-otp", uploadSingle("image"), async (req, res) => {
 
   if (!name || !fatherName || !email || !phone || !password || !otp)
     return res.status(400).json({ message: "সকল তথ্য প্রয়োজন" });
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedOtp = normalizeOTP(otp);
 
   try {
-    const record = await OTP.findOne({
-      email: email.toLowerCase(),
+    const exists = await User.findOne({ email: normalizedEmail });
+    if (exists)
+      return res.status(400).json({ message: "এই ইমেইল দিয়ে আগেই নিবন্ধন হয়েছে" });
+
+    const record = await OTP.findOneAndUpdate({
+      email: normalizedEmail,
       type: "register",
+      code: normalizedOtp,
       used: false,
       expiresAt: { $gt: new Date() },
+    }, {
+      $set: { used: true },
+    }, {
+      new: true,
     });
 
     if (!record)
-      return res.status(400).json({ message: "OTP মেয়াদ শেষ বা পাওয়া যায়নি" });
-    if (record.code !== otp.trim())
-      return res.status(400).json({ message: "OTP সঠিক নয়" });
-
-    const exists = await User.findOne({ email: email.toLowerCase() });
-    if (exists)
-      return res.status(400).json({ message: "এই ইমেইল দিয়ে আগেই নিবন্ধন হয়েছে" });
+      return res.status(400).json({ message: "OTP সঠিক নয় বা মেয়াদ শেষ" });
 
     let imageUrl = "";
     if (req.file) {
@@ -107,17 +115,13 @@ router.post("/verify-register-otp", uploadSingle("image"), async (req, res) => {
     await User.create({
       name,
       fatherName,
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       phone,
       password,
       image: imageUrl,
       role: "member",
       isActive: false,
     });
-
-    // Mark OTP as used
-    record.used = true;
-    await record.save();
 
     res.status(201).json({
       message: "নিবন্ধন সফল! অ্যাডমিন অনুমোদনের পর লগইন করতে পারবেন।",
@@ -133,33 +137,34 @@ router.post("/verify-register-otp", uploadSingle("image"), async (req, res) => {
 router.post("/forgot-password", async (req, res) => {
   const { email } = req.body;
   if (!email) return res.status(400).json({ message: "ইমেইল প্রয়োজন" });
+  const normalizedEmail = normalizeEmail(email);
 
   try {
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email: normalizedEmail });
     // Always return success to prevent email enumeration
     if (!user)
       return res.json({ message: "যদি ইমেইলটি নিবন্ধিত থাকে, OTP পাঠানো হবে" });
 
     // Rate limit
     const recent = await OTP.findOne({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       type: "reset",
       createdAt: { $gte: new Date(Date.now() - 60 * 1000) },
     });
     if (recent)
       return res.status(429).json({ message: "৬০ সেকেন্ড পর আবার চেষ্টা করুন" });
 
-    await clearOldOTPs(email, "reset");
+    await clearOldOTPs(normalizedEmail, "reset");
 
     const code = generateOTP();
     await OTP.create({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       code,
       type: "reset",
       expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     });
 
-    await sendOTPEmail(email, code, "reset");
+    await sendOTPEmail(normalizedEmail, code, "reset");
     res.json({ message: "OTP পাঠানো হয়েছে" });
   } catch (error) {
     console.error("❌ forgot-password:", error.message);
@@ -173,16 +178,19 @@ router.post("/verify-reset-otp", async (req, res) => {
   const { email, otp } = req.body;
   if (!email || !otp)
     return res.status(400).json({ message: "ইমেইল ও OTP প্রয়োজন" });
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedOtp = normalizeOTP(otp);
 
   try {
     const record = await OTP.findOne({
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       type: "reset",
+      code: normalizedOtp,
       used: false,
       expiresAt: { $gt: new Date() },
     });
 
-    if (!record || record.code !== otp.trim())
+    if (!record)
       return res.status(400).json({ message: "OTP সঠিক নয় বা মেয়াদ শেষ" });
 
     res.json({ message: "OTP সঠিক" });
@@ -200,29 +208,32 @@ router.post("/reset-password", async (req, res) => {
     return res.status(400).json({ message: "সকল তথ্য প্রয়োজন" });
   if (newPassword.length < 6)
     return res.status(400).json({ message: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে" });
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedOtp = normalizeOTP(otp);
 
   try {
-    const record = await OTP.findOne({
-      email: email.toLowerCase(),
+    const record = await OTP.findOneAndUpdate({
+      email: normalizedEmail,
       type: "reset",
+      code: normalizedOtp,
       used: false,
       expiresAt: { $gt: new Date() },
+    }, {
+      $set: { used: true },
+    }, {
+      new: true,
     });
 
-    if (!record || record.code !== otp.trim())
+    if (!record)
       return res.status(400).json({ message: "OTP সঠিক নয় বা মেয়াদ শেষ" });
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user)
       return res.status(404).json({ message: "ব্যবহারকারী পাওয়া যায়নি" });
 
     // Assign plain password — pre-save hook will hash it
     user.password = newPassword;
     await user.save();
-
-    // Consume OTP
-    record.used = true;
-    await record.save();
 
     res.json({ message: "পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে" });
   } catch (error) {
@@ -240,9 +251,10 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password)
     return res.status(400).json({ message: "Email and password required" });
+  const normalizedEmail = normalizeEmail(email);
 
   try {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user || !(await user.matchPassword(password)))
       return res.status(401).json({ message: "ইমেইল বা পাসওয়ার্ড সঠিক নয়" });
     if (!user.isActive)
@@ -278,12 +290,13 @@ router.post("/google-login", async (req, res) => {
       audience: process.env.GOOGLE_CLIENT_ID,
     });
     const { email, name, picture, sub: googleId } = ticket.getPayload();
+    const normalizedEmail = normalizeEmail(email);
 
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       user = await User.create({
         name,
-        email,
+        email: normalizedEmail,
         password: googleId + process.env.JWT_SECRET,
         image:    picture || "",
         googleId,
@@ -333,9 +346,10 @@ router.post("/register-request", uploadSingle("image"), async (req, res) => {
     return res.status(400).json({ message: "সকল তথ্য পূরণ করুন" });
   if (password.length < 6)
     return res.status(400).json({ message: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে" });
+  const normalizedEmail = normalizeEmail(email);
 
   try {
-    const exists = await User.findOne({ email });
+    const exists = await User.findOne({ email: normalizedEmail });
     if (exists)
       return res.status(400).json({ message: "এই ইমেইল দিয়ে আগেই নিবন্ধন হয়েছে" });
 
@@ -346,7 +360,7 @@ router.post("/register-request", uploadSingle("image"), async (req, res) => {
     }
 
     await User.create({
-      name, fatherName, email, phone, password,
+      name, fatherName, email: normalizedEmail, phone, password,
       image:    imageUrl,
       role:     "member",
       isActive: false,
@@ -369,15 +383,16 @@ router.post("/register", protect, adminOnly, uploadSingle("image"), async (req, 
   if (!email)                       return res.status(400).json({ message: "Valid email required" });
   if (!password || password.length < 6) return res.status(400).json({ message: "Password must be 6+ chars" });
   if (!req.file)                    return res.status(400).json({ message: "সদস্যের ছবি আপলোড করা আবশ্যক" });
+  const normalizedEmail = normalizeEmail(email);
 
   try {
-    const exists = await User.findOne({ email });
+    const exists = await User.findOne({ email: normalizedEmail });
     if (exists)
       return res.status(400).json({ message: "Email already registered" });
 
     const result = await uploadToCloudinary(req.file.buffer);
     const user   = await User.create({
-      name, fatherName, email, phone, password,
+      name, fatherName, email: normalizedEmail, phone, password,
       role:            role || "member",
       monthlyDonation: monthlyDonation || 0,
       image:           result.secure_url,
@@ -408,7 +423,7 @@ router.put("/update-profile", protect, uploadSingle("image"), async (req, res) =
 
     if (name)       user.name       = name;
     if (fatherName) user.fatherName = fatherName;
-    if (email)      user.email      = email;
+    if (email)      user.email      = normalizeEmail(email);
     if (phone)      user.phone      = phone;
     if (password)   user.password   = password;
 
@@ -480,7 +495,7 @@ router.delete("/members/:id", protect, adminOnly, async (req, res) => {
   try {
     const target = await User.findById(req.params.id);
     if (!target) return res.status(404).json({ message: "Member not found" });
-    if (target.email === SUPER_ADMIN)
+    if (normalizeEmail(target.email) === normalizeEmail(SUPER_ADMIN))
       return res.status(403).json({ message: "এই অ্যাকাউন্টে কোনো পরিবর্তন করা যাবে না" });
 
     await User.findByIdAndUpdate(req.params.id, { isActive: false });
@@ -495,7 +510,7 @@ router.delete("/reject/:id", protect, adminOnly, async (req, res) => {
   try {
     const target = await User.findById(req.params.id);
     if (!target) return res.status(404).json({ message: "Member not found" });
-    if (target.email === SUPER_ADMIN)
+    if (normalizeEmail(target.email) === normalizeEmail(SUPER_ADMIN))
       return res.status(403).json({ message: "এই অ্যাকাউন্টে কোনো পরিবর্তন করা যাবে না" });
 
     await User.findByIdAndDelete(req.params.id);
