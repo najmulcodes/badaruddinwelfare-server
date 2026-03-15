@@ -38,6 +38,9 @@ app.use(
   })
 );
 
+// Handle preflight requests
+app.options("*", cors());
+
 // ── Body Parsers ────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
