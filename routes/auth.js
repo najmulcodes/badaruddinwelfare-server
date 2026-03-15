@@ -111,6 +111,7 @@ router.post("/register-request", uploadSingle("image"), async (req, res) => {
     res.status(201).json({ message: "নিবন্ধন সফল! অ্যাডমিন অনুমোদনের পর লগইন করতে পারবেন।" });
   } catch (error) {
     console.error("❌ Register-request error:", error.message);
+    console.error("❌ Stack:", error.stack);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -127,7 +128,6 @@ router.post("/register", protect, adminOnly, uploadSingle("image"), async (req, 
     if (exists) return res.status(400).json({ message: "Email already registered" });
 
     const result = await uploadToCloudinary(req.file.buffer);
-
     const user = await User.create({
       name, fatherName, email, phone, password,
       role: role || "member",
@@ -141,6 +141,7 @@ router.post("/register", protect, adminOnly, uploadSingle("image"), async (req, 
     });
   } catch (error) {
     console.error("❌ Register error:", error.message);
+    console.error("❌ Stack:", error.stack);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -168,6 +169,7 @@ router.put("/update-profile", protect, uploadSingle("image"), async (req, res) =
     });
   } catch (error) {
     console.error("❌ Update-profile error:", error.message);
+    console.error("❌ Stack:", error.stack);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
