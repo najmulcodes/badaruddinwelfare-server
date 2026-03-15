@@ -15,8 +15,8 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const SUPER_ADMIN = "admin@shariar.com";
 
 // ── Multer/Cloudinary error wrapper ──────────────────────────
-const uploadSingle = (req, res, next) => {
-  upload.single("image")(req, res, (err) => {
+const uploadSingle = (fieldName) => (req, res, next) => {
+  upload.single(fieldName)(req, res, (err) => {
     if (err) {
       console.error("❌ Upload error:", err.message);
       return res.status(500).json({ message: "ছবি আপলোড ব্যর্থ হয়েছে", error: err.message });
@@ -121,7 +121,7 @@ router.get("/me", protect, async (req, res) => res.json(req.user));
 // ─────────────────────────────────────────────
 // POST /api/auth/register-request  (public self-registration)
 // ─────────────────────────────────────────────
-router.post("/register-request", uploadSingle, async (req, res) => {
+router.post("/register-request", uploadSingle("image"), async (req, res) => {
   const { name, fatherName, email, phone, password } = req.body;
 
   if (!name || !fatherName || !email || !phone || !password)
@@ -153,7 +153,7 @@ router.post("/register-request", uploadSingle, async (req, res) => {
 // POST /api/auth/register  (admin adds member directly)
 // ─────────────────────────────────────────────
 router.post("/register",
-  protect, adminOnly, uploadSingle,
+  protect, adminOnly, uploadSingle("image"),
   [
     body("name").notEmpty().withMessage("Name required"),
     body("email").isEmail().withMessage("Valid email required"),
@@ -191,7 +191,7 @@ router.post("/register",
 // ─────────────────────────────────────────────
 // PUT /api/auth/update-profile
 // ─────────────────────────────────────────────
-router.put("/update-profile", protect, uploadSingle, async (req, res) => {
+router.put("/update-profile", protect, uploadSingle("image"), async (req, res) => {
   try {
     const { name, fatherName, email, phone, password } = req.body;
     const user = await User.findById(req.user._id);
