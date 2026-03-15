@@ -1,28 +1,28 @@
 // seed-members.js
 // Run once: node seed-members.js
-// Creates all 20 family members with default password: brother123
+// Creates all members with default password: Badar123
 
 require("dotenv").config();
 const mongoose = require("mongoose");
 const User = require("./models/User");
 
 const members = [
-  { name: "আকবর হেসেন রিফাত",   email: "akbor@bubwo.org" },
-  { name: "আবু তালেব",           email: "abutaleb@bubwo.org" },
-  { name: "আবু বকর সিদ্দিক",    email: "abubakr@bubwo.org" },
-  { name: "আবু সায়েদ রিন",      email: "abusayed@bubwo.org" },
-  { name: "আরিফুল ইসলাম",        email: "ariful@bubwo.org" },
-  { name: "একরাম হেসেন রিদয়",   email: "ekram@bubwo.org" },
-  { name: "ওমর ফারুক",           email: "omar@bubwo.org" },
-  { name: "পারেভেজ",             email: "parvez@bubwo.org" },
-  { name: "মামুনুর রশীদ",        email: "mamun@bubwo.org" },
-  { name: "মেজবাহ উদ্দিন",       email: "mezbah@bubwo.org" },
-  { name: "মোঃ আলমগীর",          email: "alamgir@bubwo.org" },
-  { name: "মোঃ মুসা",            email: "musa@bubwo.org" },
-  { name: "মোঃ সামসুউদ্দিন",     email: "shamsuddin@bubwo.org" },
-  { name: "রাজীব",               email: "rajib@bubwo.org" },
-  { name: "শরীফুল ইসলাম",        email: "shariful@bubwo.org" },
-  { name: "শাহরিয়ার",           email: "admin@shariar.com" },
+  { name: "আকবর হেসেন রিফাত", email: "akbor@badaruddin.org" },
+  { name: "আবু তালেব", email: "abutaleb@badaruddin.org" },
+  { name: "আবু বকর সিদ্দিক", email: "abubakr@badaruddin.org" },
+  { name: "আবু সায়েদ রিন", email: "abusayed@badaruddin.org" },
+  { name: "আরিফুল ইসলাম", email: "ariful@badaruddin.org" },
+  { name: "একরাম হেসেন রিদয়", email: "ekram@badaruddin.org" },
+  { name: "ওমর ফারুক", email: "omar@badaruddin.org" },
+  { name: "পারেভেজ", email: "parvez@badaruddin.org" },
+  { name: "মামুনুর রশীদ", email: "mamun@badaruddin.org" },
+  { name: "মেজবাহ উদ্দিন", email: "mezbah@badaruddin.org" },
+  { name: "মোঃ আলমগীর", email: "alamgir@badaruddin.org" },
+  { name: "মোঃ মুসা", email: "musa@badaruddin.org" },
+  { name: "মোঃ সামসুউদ্দিন", email: "shamsuddin@badaruddin.org" },
+  { name: "রাজীব", email: "rajib@badaruddin.org" },
+  { name: "শরীফুল ইসলাম", email: "shariful@badaruddin.org" },
+  { name: "শাহরিয়ার", email: "sir@badaruddin.org" },
 ];
 
 async function seed() {
@@ -39,14 +39,16 @@ async function seed() {
       skipped++;
       continue;
     }
+
     await User.create({
       name: m.name,
       email: m.email,
-      password: "bother123",
+      password: "Badar123",
       role: "member",
       isActive: true,
       image: "",
     });
+
     console.log(`✅ Created: ${m.name}`);
     created++;
   }

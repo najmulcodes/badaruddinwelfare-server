@@ -6,7 +6,7 @@
 
 <p align="center">
 <b>Backend API for Badar Uddin Bepari Welfare Organization</b><br/>
-Secure, scalable backend for managing charity donations, help requests, and member operations.
+Secure backend for managing charity donations, member activities, help requests, and fund transparency.
 </p>
 
 <p align="center">
@@ -19,7 +19,7 @@ Secure, scalable backend for managing charity donations, help requests, and memb
 
 ---
 
-# ⚙ Badar Uddin Welfare Server API
+# ⚙ Badaruddin Welfare Server API
 
 This repository contains the **backend server for the Badar Uddin Bepari Welfare Organization platform.**
 
@@ -27,7 +27,7 @@ It provides the **REST API, authentication system, database integration, and fil
 
 The server powers both:
 
-• Public charity website
+• Public charity website  
 • Private member management portal
 
 ---
@@ -38,46 +38,41 @@ The backend manages the charity’s operations digitally.
 
 It allows the organization to:
 
-• Track member donations
-• Manage available charity funds
-• Record spending for beneficiaries
-• Receive help requests from the public
-• Maintain transparency in fund management
+• Track member donations  
+• Manage available charity funds  
+• Record spending for beneficiaries  
+• Receive help requests from the public  
+• Maintain transparency in fund management  
 
 ---
 
 # 🏗 Backend Architecture
 
-```
+
 badaruddinwelfare-server
 │
 ├── controllers
-│
 ├── routes
-│
 ├── models
-│
 ├── middleware
-│
 ├── config
-│
 ├── utils
-│
 ├── uploads
 │
 ├── server.js
-│
 └── package.json
-``` 
+
+
+---
 
 # 🚀 Live API
 
 Production API (Render)
 
-```
+
 https://badaruddinwelfare-api.onrender.com
-```
-Live Link : https://badaruddinwelfare-server.onrender.com/
+
+
 ---
 
 # 🛠 Tech Stack
@@ -100,7 +95,7 @@ JWT (JSON Web Token)
 
 ### File Upload
 
-Multer
+Multer  
 Cloudinary
 
 ### Deployment
@@ -117,9 +112,9 @@ Secure member authentication using **JWT tokens**.
 
 Features:
 
-• Login authentication
-• Protected routes
-• Token verification middleware
+• Login authentication  
+• Protected routes  
+• Token verification middleware  
 
 ---
 
@@ -129,10 +124,10 @@ Members can record monthly contributions.
 
 Data fields include:
 
-• Member Name
-• Date
-• Amount
-• Notes
+• Member Name  
+• Date  
+• Amount  
+• Notes  
 
 The system automatically calculates:
 
@@ -146,11 +141,11 @@ Records when charity funds are used to help someone.
 
 Fields include:
 
-• Recipient Name
-• Amount
-• Purpose
-• Date
-• Notes
+• Recipient Name  
+• Amount  
+• Purpose  
+• Date  
+• Notes  
 
 The system calculates:
 
@@ -162,9 +157,9 @@ The system calculates:
 
 Current fund balance is calculated as:
 
-```
+
 Available Fund = Total Donations - Total Spending
-```
+
 
 ---
 
@@ -174,30 +169,30 @@ Public users can submit assistance requests.
 
 Fields:
 
-• Name
-• Phone
-• Address
-• Description
-• Supporting Documents
+• Name  
+• Phone  
+• Address  
+• Description  
+• Supporting Documents  
 
 Requests are stored in the database and reviewed by members.
 
 Status options:
 
-• New
-• Under Review
-• Approved
-• Rejected
+• New  
+• Under Review  
+• Approved  
+• Rejected  
 
 ---
 
 # 🔒 Security Features
 
-• JWT authentication
-• Protected API routes
-• Input validation
-• File upload restrictions
-• Secure environment variables
+• JWT authentication  
+• Protected API routes  
+• Input validation  
+• File upload restrictions  
+• Secure environment variables  
 
 Unauthorized users cannot access member data.
 
@@ -207,34 +202,45 @@ Unauthorized users cannot access member data.
 
 ### Authentication
 
+
 POST /api/auth/login
+
 
 ---
 
 ### Donations
 
+
 GET /api/donations
 POST /api/donations
+
 
 ---
 
 ### Spending
 
+
 GET /api/spending
 POST /api/spending
+
 
 ---
 
 ### Help Requests
 
+
 GET /api/help-requests
 POST /api/help-requests
+PATCH /api/help-requests/:id/status
+
 
 ---
 
 ### Contact Messages
 
+
 POST /api/contact
+
 
 ---
 
@@ -242,35 +248,35 @@ POST /api/contact
 
 Clone the repository
 
-```
-git clone https://github.com/yourusername/badaruddinwelfare-server.git
-```
+
+git clone https://github.com/najmulcodes/badaruddinwelfare-server.git
+
 
 Navigate to project directory
 
-```
+
 cd badaruddinwelfare-server
-```
+
 
 Install dependencies
 
-```
+
 npm install
-```
+
 
 ---
 
 # ▶ Run Development Server
 
-```
+
 npm run dev
-```
+
 
 Server will start on
 
-```
+
 http://localhost:5000
-```
+
 
 ---
 
@@ -280,7 +286,7 @@ Create a `.env` file inside the root directory.
 
 Example:
 
-```
+
 PORT=5000
 
 MONGO_URI=your_mongodb_connection
@@ -290,7 +296,7 @@ JWT_SECRET=your_secret_key
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
-```
+
 
 ---
 
@@ -301,19 +307,21 @@ Backend is deployed using **Render**.
 Steps:
 
 1. Push repository to GitHub
-2. Connect GitHub repo to Render
+2. Connect GitHub repository to Render
 3. Set environment variables
 4. Deploy server
+
+---
 
 # 📊 Database (MongoDB)
 
 Collections used:
 
-• users
-• donations
-• spending
-• helpRequests
-• contactMessages
+• users  
+• donations  
+• spending  
+• helpRequests  
+• contactMessages  
 
 ---
 
@@ -321,9 +329,9 @@ Collections used:
 
 Frontend Client
 
-```
- https://github.com/najmulcodes/badaruddinwelfare-client
-```
+
+https://github.com/najmulcodes/badaruddinwelfare-client
+
 
 ---
 
@@ -335,17 +343,17 @@ Developed by
 
 Full Stack Developer
 
-GitHub
+GitHub  
 https://github.com/najmulcodes
 
-Email
-[najmulhasanshahin@gmail.com](mailto:najmulhasanshahin@gmail.com)
+Email  
+najmulhasanshahin@gmail.com
 
 ---
 
 # 📜 License
 
-This project is developed for
+This project is developed for  
 **Badar Uddin Bepari Welfare Organization**
 
 All rights reserved.
