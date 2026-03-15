@@ -90,8 +90,6 @@ router.post("/register-request", uploadSingle("image"), async (req, res) => {
   const { name, fatherName, email, phone, password } = req.body;
   if (!name || !fatherName || !email || !phone || !password)
     return res.status(400).json({ message: "সকল তথ্য পূরণ করুন" });
-  if (!req.file)
-    return res.status(400).json({ message: "প্রোফাইল ছবি আপলোড করা আবশ্যক" });
   if (password.length < 6)
     return res.status(400).json({ message: "পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে" });
   try {
@@ -99,7 +97,9 @@ router.post("/register-request", uploadSingle("image"), async (req, res) => {
     if (exists) return res.status(400).json({ message: "এই ইমেইল দিয়ে আগেই নিবন্ধন হয়েছে" });
     await User.create({
       name, fatherName, email, phone, password,
-      image: req.file.path, role: "member", isActive: false,
+      image: req.file?.path || "",
+      role: "member",
+      isActive: false,
     });
     res.status(201).json({ message: "নিবন্ধন সফল! অ্যাডমিন অনুমোদনের পর লগইন করতে পারবেন।" });
   } catch (error) {
