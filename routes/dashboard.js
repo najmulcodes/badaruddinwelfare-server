@@ -12,8 +12,11 @@ const { protect } = require("../middleware/auth");
 // @access Private
 router.get("/", protect, async (req, res) => {
   try {
+    const isAdmin = req.user.role === "admin" || req.user.role === "superAdmin";
+
     // Total donations
     const donationResult = await Donation.aggregate([
+      { $match: { status: "approved" } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     const totalDonations = donationResult[0]?.total || 0;
@@ -31,9 +34,12 @@ router.get("/", protect, async (req, res) => {
     const totalMembers = await User.countDocuments({ isActive: true });
     const newHelpRequests = await HelpRequest.countDocuments({ status: "New" });
     const unreadMessages = await ContactMessage.countDocuments({ isRead: false });
+    const pendingDonations = isAdmin
+      ? await Donation.countDocuments({ status: "pending" })
+      : 0;
 
     // Recent activity (last 5 donations + last 5 spendings)
-    const recentDonations = await Donation.find()
+    const recentDonations = await Donation.find({ status: "approved" })
       .sort({ createdAt: -1 })
       .limit(5)
       .populate("member", "name");
@@ -49,6 +55,7 @@ router.get("/", protect, async (req, res) => {
       totalMembers,
       newHelpRequests,
       unreadMessages,
+      pendingDonations,
       recentDonations,
       recentSpendings,
     });

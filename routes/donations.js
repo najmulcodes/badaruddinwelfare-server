@@ -8,11 +8,24 @@ const { protect, adminOnly } = require("../middleware/auth");
 // @access Private
 router.get("/", protect, async (req, res) => {
   try {
-    const { member, month, year } = req.query;
+    const { member, month, year, status } = req.query;
+    const isAdmin = req.user.role === "admin" || req.user.role === "superAdmin";
     const filter = {};
-    if (member) filter.member = member;
+
+    if (member) {
+      if (!isAdmin && String(member) !== String(req.user._id)) {
+        return res.status(403).json({ message: "এই তথ্য দেখার অনুমতি নেই" });
+      }
+      filter.member = member;
+    }
+
     if (month) filter.month = Number(month);
     if (year) filter.year = Number(year);
+    if (isAdmin) {
+      if (status) filter.status = status;
+    } else if (!filter.member) {
+      filter.status = "approved";
+    }
 
     const donations = await Donation.find(filter)
       .populate("member", "name email image")
@@ -29,6 +42,7 @@ router.get("/", protect, async (req, res) => {
 router.get("/summary", protect, async (req, res) => {
   try {
     const result = await Donation.aggregate([
+      { $match: { status: "approved" } },
       { $group: { _id: null, total: { $sum: "$amount" } } },
     ]);
     res.json({ totalDonations: result[0]?.total || 0 });
@@ -54,6 +68,7 @@ router.post("/member-report", protect, async (req, res) => {
       month: Number(month),
       year: Number(year),
       notes: notes || "Member self-report",
+      status: "pending",
     });
 
     res.status(201).json({
@@ -74,8 +89,50 @@ router.post("/", protect, adminOnly, async (req, res) => {
     if (!member || !memberName || !amount || !month || !year) {
       return res.status(400).json({ message: "All required fields must be provided" });
     }
-    const donation = await Donation.create({ member, memberName, amount, month, year, notes });
+    const donation = await Donation.create({
+      member,
+      memberName,
+      amount,
+      month,
+      year,
+      notes,
+      status: "approved",
+    });
     res.status(201).json(donation);
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// @route  PATCH /api/donations/approve/:id
+// @desc   Approve a pending donation
+// @access Private/Admin
+router.patch("/approve/:id", protect, adminOnly, async (req, res) => {
+  try {
+    const donation = await Donation.findByIdAndUpdate(
+      req.params.id,
+      { status: "approved" },
+      { new: true }
+    );
+    if (!donation) return res.status(404).json({ message: "Donation not found" });
+    res.json({ message: "Donation approved", donation });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// @route  PATCH /api/donations/reject/:id
+// @desc   Reject a pending donation
+// @access Private/Admin
+router.patch("/reject/:id", protect, adminOnly, async (req, res) => {
+  try {
+    const donation = await Donation.findByIdAndUpdate(
+      req.params.id,
+      { status: "rejected" },
+      { new: true }
+    );
+    if (!donation) return res.status(404).json({ message: "Donation not found" });
+    res.json({ message: "Donation rejected", donation });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
