@@ -8,18 +8,23 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// ── Verify Cloudinary connection on startup ──
+cloudinary.api.ping()
+  .then(() => console.log("✅ Cloudinary connected"))
+  .catch((err) => console.error("❌ Cloudinary Error:", err.message));
+
 const storage = new CloudinaryStorage({
   cloudinary,
   params: {
     folder: "badaruddin-welfare",
-    allowed_formats: ["jpg", "jpeg", "png", "pdf", "webp"],
+    allowed_formats: ["jpg", "jpeg", "png", "webp"],
     resource_type: "auto",
   },
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
 module.exports = { cloudinary, upload };
