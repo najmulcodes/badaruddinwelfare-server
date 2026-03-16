@@ -35,7 +35,7 @@ const sendOTPEmail = async (email, otp, type) => {
   const payload = JSON.stringify({
     sender: {
       name:  "বদর উদ্দিন বেপারী কল্যাণ সংস্থা",
-      email: "a50356001@smtp-brevo.com",
+      email: "badaruddinwelfareorg@gmail.com",
     },
     to: [{ email }],
     subject,
